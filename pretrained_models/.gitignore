@@ -1,0 +1,3 @@
+# Ignore models
+*.caffemodel
+*.pth.tar

@@ -1,3 +1,9 @@
 **/.DS_Store
 **/.pyc
 **/__pycache__
+
+# test directories
+output/
+images/
+
+utils/*.h5
