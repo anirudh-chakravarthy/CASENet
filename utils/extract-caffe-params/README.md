@@ -7,10 +7,10 @@ For help on usage,
 `python extract.py -h`
 
 To use, 
-`python extract.py [-h] [--model MODEL] [--weights WEIGHTS] [--output OUTPUT]`
+```python extract.py [-h] [--model MODEL] [--weights WEIGHTS] [--output OUTPUT]
 
 Optional Arguments:
-```      -h, --help         show this help message and exit
+      -h, --help         show this help message and exit
       --model MODEL      model prototxt path .prototxt
       --weights WEIGHTS  caffe model weights path .caffemodel
       --output OUTPUT    output path

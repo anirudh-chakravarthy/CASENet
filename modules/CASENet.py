@@ -389,9 +389,9 @@ if __name__ == "__main__":
     load_npy_to_layer(model, layer_to_name_dict, npy_folder, loaded_model_path)
     
     # npy_folder = "/Users/anirudhchakravarthy/Documents/CodeArchive/Asian-Paints/CASENet-torch/init_models/"
-    # loaded_model_path = "/Users/anirudhchakravarthy/Documents/CodeArchive/Asian-Paints/CASENet-torch/init_models/casenet_inst_init.pth.tar"
-    layer_to_name_dict = gen_mapping_layer_name(model)
-    load_npy_to_layer(model, layer_to_name_dict, npy_folder, loaded_model_path)
+    # # loaded_model_path = "/Users/anirudhchakravarthy/Documents/CodeArchive/Asian-Paints/CASENet-torch/init_models/casenet_inst_init.pth.tar"
+    # layer_to_name_dict = gen_mapping_layer_name(model)
+    # load_npy_to_layer(model, layer_to_name_dict, npy_folder, loaded_model_path)
     
     input_data = torch.rand(2, 3, 472, 472)
     input_var = Variable(input_data)
