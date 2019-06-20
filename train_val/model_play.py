@@ -18,7 +18,7 @@ sys.path.append("../")
 import utils.utils as utils
 from utils.utils import AverageMeter
 
-def train(args, train_loader, model, optimizer, epoch, curr_lr, win_feats5, win_fusion, viz, global_step):
+def train(args, train_loader, model, optimizer, epoch, curr_lr, win_feats5, win_fusion, viz, global_step, accumulation_steps):
     batch_time = AverageMeter()
     data_time = AverageMeter()
     feats5_losses = AverageMeter()
@@ -26,7 +26,8 @@ def train(args, train_loader, model, optimizer, epoch, curr_lr, win_feats5, win_
     total_losses = AverageMeter()
 
     # switch to eval mode to make BN unchanged.
-    model.eval()
+    model.train()
+    optimizer.zero_grad()
 
     end = time.time()
     for i, (img, target) in enumerate(train_loader):
@@ -37,45 +38,59 @@ def train(args, train_loader, model, optimizer, epoch, curr_lr, win_feats5, win_
         img_var = utils.check_gpu(0, img) # BS X 3 X H X W
         target_var = utils.check_gpu(0, target) # BS X H X W X NUM_CLASSES
         
-        bs = img.size()[0]
+        bs = img.size()[0] * accumulation_steps
 
         score_feats5, fused_feats = model(img_var) # BS X NUM_CLASSES X 472 X 472
        
         feats5_loss = WeightedMultiLabelSigmoidLoss(score_feats5, target_var) 
         fused_feats_loss = WeightedMultiLabelSigmoidLoss(fused_feats, target_var) 
         loss = feats5_loss + fused_feats_loss
-             
-        feats5_losses.update(feats5_loss.data[0], bs)
-        fusion_losses.update(fused_feats_loss.data[0], bs)
-        total_losses.update(loss.data[0], bs)
 
-        # Only plot the fused feats loss.
-        trn_feats5_loss = feats5_loss.clone().cpu().data.numpy()[0]
-        trn_fusion_loss = fused_feats_loss.clone().cpu().data.numpy()[0]
-        viz.line(win=win_feats5, name='train_feats5', update='append', X=np.array([global_step]), Y=np.array([trn_feats5_loss]))
-        viz.line(win=win_fusion, name='train_fusion', update='append', X=np.array([global_step]), Y=np.array([trn_fusion_loss]))
-
-        optimizer.zero_grad()
         loss.backward()
-        optimizer.step()
 
-        # measure elapsed time
-        batch_time.update(time.time() - end)
-        end = time.time()
+        # clear memory
+        del img_var
+        del target_var
+        del score_feats5
+        torch.cuda.empty_cache()
 
-        if (i % args.print_freq == 0):
-            print("\n\n")
-            print('Epoch: [{0}][{1}/{2}]\t'
-                  'Time {batch_time.val:.3f} ({batch_time.avg:.3f})\t'
-                  'Data {data_time.val:.3f} ({data_time.avg:.3f})\t'
-                  'Total Loss {total_loss.val:.11f} ({total_loss.avg:.11f})\n'
-                  'lr {learning_rate:.10f}\t'
-                  .format(epoch, i, len(train_loader), batch_time=batch_time,
-                   data_time=data_time, total_loss=total_losses, 
-                   learning_rate=curr_lr))
+        # increase batch size by factor of accumulation steps (Gradient accumulation) for training with limited memory
+        if (i+1) % accumulation_steps == 0:
+            feats5_losses.update(feats5_loss.data, bs)
+            fusion_losses.update(fused_feats_loss.data, bs)
+            total_losses.update(loss.data, bs)
+
+            # Only plot the fused feats loss.
+            trn_feats5_loss = feats5_loss.clone().cpu().data.numpy()
+            trn_fusion_loss = fused_feats_loss.clone().cpu().data.numpy()
+            viz.line(win=win_feats5, name='train_feats5', update='append', X=np.array([global_step]), Y=np.array([trn_feats5_loss]))
+            viz.line(win=win_fusion, name='train_fusion', update='append', X=np.array([global_step]), Y=np.array([trn_fusion_loss]))
+
+            optimizer.step()
+            optimizer.zero_grad()
+            global_step += 1
+
+            # measure elapsed time
+            batch_time.update(time.time() - end)
+            end = time.time()
+
+            if ((i+1) % args.print_freq == 0):
+                print("\n\n")
+                print('Epoch: [{0}][{1}/{2}]\t'
+                      'Time {batch_time.val:.3f} ({batch_time.avg:.3f})\t'
+                      'Data {data_time.val:.3f} ({data_time.avg:.3f})\t'
+                      'Total Loss {total_loss.val:.11f} ({total_loss.avg:.11f})\n'
+                      'lr {learning_rate:.10f}\t'
+                      .format(epoch, int((i+1)/accumulation_steps), int(len(train_loader)/accumulation_steps), batch_time=batch_time,
+                       data_time=data_time, total_loss=total_losses, 
+                       learning_rate=curr_lr))
         
-        global_step += 1
-
+    del feats5_loss
+    del fused_feats_loss
+    del feats5_losses
+    del fusion_losses
+    del total_losses
+    torch.cuda.empty_cache()
     return global_step
 
 def validate(args, val_loader, model, epoch, win_feats5, win_fusion, viz, global_step):
@@ -87,6 +102,7 @@ def validate(args, val_loader, model, epoch, win_feats5, win_fusion, viz, global
     
     # switch to train mode
     model.eval()
+    torch.no_grad()
 
     end = time.time()
     for i, (img, target) in enumerate(val_loader):
@@ -105,13 +121,21 @@ def validate(args, val_loader, model, epoch, win_feats5, win_fusion, viz, global
         fused_feats_loss = WeightedMultiLabelSigmoidLoss(fused_feats, target_var) 
         loss = feats5_loss + fused_feats_loss
              
-        feats5_losses.update(feats5_loss.data[0], bs)
-        fusion_losses.update(fused_feats_loss.data[0], bs)
-        total_losses.update(loss.data[0], bs)
+        feats5_losses.update(feats5_loss.data, bs)
+        fusion_losses.update(fused_feats_loss.data, bs)
+        total_losses.update(loss.data, bs)
 
         # measure elapsed time
         batch_time.update(time.time() - end)
         end = time.time()
+
+        # clear memory
+        del img_var
+        del target_var
+        del score_feats5
+        del fused_feats_loss
+        del feats5_loss
+        torch.cuda.empty_cache()
 
         if (i % args.print_freq == 0):
             print("\n\n")

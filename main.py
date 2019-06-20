@@ -24,8 +24,8 @@ from modules.CASENet import CASENet_resnet101
 import train_val.model_play as model_play
 
 # For visualization
-# import visdom
-# viz = visdom.Visdom(server="http://cluster7.ais.sandbox", port=22222, env='CASENet-SBD')
+import visdom
+viz = visdom.Visdom(env='CASENet')
 
 # For settings
 import config
@@ -78,13 +78,16 @@ def main():
         optimizer.load_state_dict(checkpoint['optimizer'])
 
     for epoch in range(args.start_epoch, args.epochs):
-        curr_lr = utils.adjust_learning_rate(args.lr, args, optimizer, global_step, args.lr_steps)
+        torch.cuda.empty_cache()
+        curr_lr = utils.adjust_learning_rate(args.lr, args, optimizer, global_step, args.lr_steps, args.acc_steps)
 
         global_step = model_play.train(args, train_loader, model, optimizer, epoch, curr_lr,\
                                  win_feats5, win_fusion, viz, global_step)
+        torch.cuda.empty_cache()
     
         curr_loss = model_play.validate(args, val_loader, model, epoch, win_feats5, win_fusion, viz, global_step)
-        
+        torch.cuda.empty_cache()
+
         # Always store current model to avoid process crashed by accident.
         utils.save_checkpoint({
             'epoch': epoch,

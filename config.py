@@ -23,6 +23,8 @@ def get_args():
 
     parser.add_argument('--lr-steps', default=[10000, 20000, 30000, 40000], type=int, nargs="+",
                         metavar='LRSteps', help='iterations to decay learning rate by 10')
+    parser.add_argument('--acc-steps', default=1, type=int, metavar='AccSteps', 
+                        help='accumulation steps for Gradient accumulation for training with limited memory')
     
     parser.add_argument('-b', '--batch-size', default=1, type=int,
                         metavar='N', help='mini-batch size (default: 1)')

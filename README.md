@@ -42,6 +42,7 @@ Optional arguments:
     --start-epoch           manual epoch number (useful on restarts)
     --cls-num               The number of classes (default: 19 for Cityscapes)
     --lr-steps              iterations to decay learning rate by 10
+    --acc-steps             steps for Gradient accumulation  (default: 1)
     -b, --batch-size        mini-batch size (default: 1)
     --lr                    lr (default: 1e-7)
     --momentum              momentum (default: 0.9)
@@ -74,6 +75,11 @@ python get_results_for_benchmark.py -m pretrained_models/model_casenet.pth.tar -
 ```
 
 A class wise prediction map will be generated in the output directory specified.
+
+## Additional changes
+1. Added script to convert edges to contours and visualize
+2. Implemented gradient accumulation to increase batch size without increasing memory usage.
+3. Cleared unused variable to empty cache memory.
 
 ## Acknowledgements
 1. Data processing was done from the following repository: <https://github.com/Chrisding/cityscapes-preprocess>
