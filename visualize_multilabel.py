@@ -138,7 +138,7 @@ if __name__ == "__main__":
 
     h5_f = h5py.File("./utils/val_label_binary_np.h5", 'r')
     
-    for idx_img in xrange(len(test_list)):
+    for idx_img in range(len(test_list)):
         img = Image.open(test_list[idx_img]).convert('RGB')
         processed_img = img_transform(img).unsqueeze(0)
         processed_img = utils.check_gpu(None, processed_img)    
@@ -148,7 +148,7 @@ if __name__ == "__main__":
         np_data = h5_f['data/'+ori_test_list[idx_img].replace('leftImg8bit', 'gtFine').replace('/', '_').replace('.png', '_edge.npy')]
         label_data = []
         num_cls = np_data.shape[2]
-        for k in xrange(num_cls):
+        for k in range(num_cls):
             if np_data[:,:,num_cls-1-k].sum() > 0:
                 label_tensor = label_transform(torch.from_numpy(np_data[:, :, num_cls-1-k]).unsqueeze(0).float())
             else: # ALL zeros, don't need transform, maybe a bit faster?..
@@ -163,7 +163,7 @@ if __name__ == "__main__":
         score_feats_str_list = ['feats1', 'feats2', 'feats3'] 
 
 		# visualize side edge activation
-        for i in xrange(len(score_feats_list)):
+        for i in range(len(score_feats_list)):
             feature = score_feats_list[i]
             feature_str = score_feats_str_list[i]
     
@@ -177,7 +177,7 @@ if __name__ == "__main__":
 
         # visualize side class activation
         side_cls = normalized_feature_map(np.transpose(score_feats5.data[0].cpu().numpy(), (1, 2, 0)))
-        for idx_cls in xrange(num_cls):
+        for idx_cls in range(num_cls):
             side_cls_i = side_cls[:, :, idx_cls]
             im = (side_cls_i * 255).astype(np.uint8)
             if not os.path.exists(os.path.join(args.output_dir, img_base_name_noext)):
@@ -186,9 +186,9 @@ if __name__ == "__main__":
                 os.path.join(args.output_dir, img_base_name_noext, img_base_name_noext+'_'+'feats5'+'_'+cls_names[num_cls-idx_cls-1]+'.png'),
                 im)
     
-        # visualize predicted class
+        # visualize predicted class and contours
         score_output = sigmoid(score_fuse_feats.transpose(1,3).transpose(1,2)).data[0].cpu().numpy()
-        for idx_cls in xrange(num_cls):
+        for idx_cls in range(num_cls):
             r = np.zeros((score_output.shape[0], score_output.shape[1]))
             g = np.zeros((score_output.shape[0], score_output.shape[1]))
             b = np.zeros((score_output.shape[0], score_output.shape[1]))
@@ -207,10 +207,48 @@ if __name__ == "__main__":
             if not os.path.exists(os.path.join(args.output_dir, img_base_name_noext)):
                 os.makedirs(os.path.join(args.output_dir, img_base_name_noext))
             plt.imsave(os.path.join(args.output_dir, img_base_name_noext, img_base_name_noext+'_fused_pred_'+cls_names[idx_cls]+'.png'), rgb) 
-        
+
+            gray = np.zeros(r.shape, dtype=np.uint8)
+            gray[score_pred_flag==0] = 0
+            gray[score_pred_flag==1] = 127
+
+            # create border for image
+            top = 1
+            bottom = top
+            left = 1
+            right = left
+            gray = cv2.copyMakeBorder(gray, top, bottom, left, right, cv2.BORDER_CONSTANT, None, (127,))
+
+            # morphological operator
+            kernel = cv2.getStructuringElement(cv2.MORPH_ELLIPSE,(7,7))
+            # dilated = cv2.dilate(gray, kernel)
+            closed = cv2.morphologyEx(gray, cv2.MORPH_CLOSE, kernel) # Closing Morphological Operator
+            # opened = cv2.morphologyEx(gray, cv2.MORPH_OPEN, kernel) # Opening Morphological Operator
+            _, cnts, hierarchy = cv2.findContours(closed.copy(), cv2.RETR_LIST, cv2.CHAIN_APPROX_SIMPLE)
+            
+            # select contour based on area and arc length
+            # print(len(cnts)) 
+            # cnts = [c for c in cnts if (cv2.arcLength(c, True) < 1880.0 and cv2.arcLength(c, True) >= 10.0)]
+            cnts = [c for c in cnts if (cv2.arcLength(c, True) < 1880.0 and cv2.contourArea(c, True) >= 150.0)]
+            cnts = sorted(cnts, key = cv2.contourArea, reverse = True)
+            # print(cls_names[idx_cls])
+            # for c in cnts:
+            #     print(cv2.arcLength(c, True), cv2.contourArea(c))   
+            # cv2.drawContours(gray, cnts, -1, (255,255,0), 3)
+            
+            resizedimg = img.resize((472,472), resample=PIL.Image.BILINEAR)
+            opencv_image = np.array(resizedimg) 
+            opencv_image = opencv_image[:, :, ::-1].copy() 
+            cv2.drawContours(opencv_image, cnts, -1, (255,255,0), 1)
+            opencv_image = cv2.resize(opencv_image, img.size, interpolation = cv2.INTER_CUBIC)
+            
+            if not os.path.exists(os.path.join(args.output_dir, img_base_name_noext)):
+                os.makedirs(os.path.join(args.output_dir, img_base_name_noext))
+            cv2.imwrite(os.path.join(args.output_dir, img_base_name_noext, img_base_name_noext+'_'+cls_names[idx_cls]+'.png'), opencv_image)
+
         # gt visualization
         gt_data = label_data.numpy() 
-        for idx_cls in xrange(num_cls):
+        for idx_cls in range(num_cls):
             r = np.zeros((gt_data.shape[0], gt_data.shape[1]))
             g = np.zeros((gt_data.shape[0], gt_data.shape[1]))
             b = np.zeros((gt_data.shape[0], gt_data.shape[1]))
