@@ -4,6 +4,7 @@ import os
 import zipfile
 import shutil
 import h5py
+from tqdm import tqdm
 
 import torch
 
@@ -24,11 +25,9 @@ if __name__ == "__main__":
     f = open("/Users/anirudhchakravarthy/Documents/CodeArchive/Asian-Paints/CASENet-torch-cityscapes/cityscapes-preprocess/data_proc/val.txt", 'r')
     lines = f.readlines()
     root_folder = "/Users/anirudhchakravarthy/Documents/CodeArchive/Asian-Paints/CASENet-torch-cityscapes/cityscapes-preprocess/data_proc/"
-    cnt = 0
 
     h5_file = h5py.File("val_label_binary_np.h5", 'w')
-    for ori_line in lines:
-        cnt += 1
+    for ori_line in tqdm(lines):
         line = ori_line.split()
         bin_name = line[1]
         img_name = line[0]
@@ -42,5 +41,3 @@ if __name__ == "__main__":
         label_data = np.fromfile(label_path, dtype=np.uint32)
         npz_name = bin_name.replace("bin", "npy")
         convert_num_to_bitfield(label_data, h, w, npz_name, root_folder, h5_file)
-        if cnt % 20 == 0:
-            print("{0} have been finished.".format(cnt))
