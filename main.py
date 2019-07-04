@@ -76,6 +76,8 @@ def main():
         min_val_loss = checkpoint['min_loss']
         model.load_state_dict(checkpoint['state_dict'])
         optimizer.load_state_dict(checkpoint['optimizer'])
+        del checkpoint
+        torch.cuda.empty_cache()
 
     for epoch in range(args.start_epoch, args.epochs):
         torch.cuda.empty_cache()
