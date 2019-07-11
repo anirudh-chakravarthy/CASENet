@@ -10,7 +10,7 @@ import matplotlib.pyplot as plt
 import zipfile
 import shutil
 import h5py
-from scipy.misc import imsave
+from imageio import imwrite
 
 import torch
 from torch import sigmoid
@@ -104,7 +104,7 @@ if __name__ == "__main__":
             img_base_name_noext = os.path.splitext(os.path.basename(test_lst[idx_img]))[0]
             if not os.path.exists(os.path.join(args.output_dir, str(cls_idx))):
                 os.makedirs(os.path.join(args.output_dir, str(cls_idx)))
-            imsave(os.path.join(args.output_dir, str(cls_idx), img_base_name_noext+'.png'), im_arr)
+            imwrite(os.path.join(args.output_dir, str(cls_idx), img_base_name_noext+'.png'), im_arr)
             print 'processed: '+test_lst[idx_img]
     
     print 'Done!'
