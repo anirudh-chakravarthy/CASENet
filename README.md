@@ -28,6 +28,8 @@ python modules/CASENet.py
 ```
 after updating the directory path at [this line](https://github.com/anirudh-chakravarthy/CASENet/blob/master/modules/CASENet.py#L386) to the parent directory containing the numpy files (use absolute paths).
 
+**NOTE**: The Pytorch pre-trained weights can be downloaded from: [Google Drive.](https://drive.google.com/open?id=1zxshISZtq0_S6zFB37F-FhE9wT1ZBrGK)
+
 ## Training
 For training, run:
 ```
